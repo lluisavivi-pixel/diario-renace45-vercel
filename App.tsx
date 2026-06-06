@@ -118,7 +118,7 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
 
   const isDev = typeof window !== 'undefined' && (
-    import.meta.env.DEV ||
+    (import.meta as any).env?.DEV ||
     window.location.hostname === 'localhost' ||
     window.location.hostname.includes('lovable.dev') ||
     window.location.hostname.includes('vercel.app')
