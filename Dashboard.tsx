@@ -282,7 +282,7 @@ export default function Dashboard({ diario, onBack }: DashboardProps) {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            style={{ flexShrink: 0, padding: '0.5rem 1rem', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: tab === t.id ? 'var(--lavanda)' : '#fff', color: tab === t.id ? '#fff' : 'var(--muted-tf)', border: tab === t.id ? 'none' : '1.5px solid var(--borde)', transition: 'all 0.2s ease' }}
+            style={{ flexShrink: 0, padding: '0.5rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: tab === t.id ? 'var(--lavanda)' : '#fff', color: tab === t.id ? '#fff' : 'var(--muted-tf)', border: tab === t.id ? 'none' : '1.5px solid var(--borde)', transition: 'all 0.2s ease' }}
           >
             {t.label}
           </button>
