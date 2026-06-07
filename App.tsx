@@ -51,7 +51,7 @@ function DevPanel({ diario, onUpdate }: { diario: Diario; onUpdate: (d: Diario) 
       </div>
       {[
         { label: 'Reset hoy', action: () => { const nd = resetToday(diario); saveDiario(nd); onUpdate(nd); } },
-        { label: 'Simular día anterior', action: () => { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); const fecha = yesterday.toISOString().slice(0, 10); const ne = newEntradaForToday(diario.entradas.length + 1); const e = { ...ne, fecha }; const nd = { ...diario, entradas: [...diario.entradas.filter(x => x.fecha !== fecha), e] }; saveDiario(nd); onUpdate(nd); } },
+        { label: 'Simular día anterior', action: () => { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); const fecha = yesterday.toISOString().slice(0, 10); const ne = newEntradaForToday(diario.entradas.length + 1); const e = { ...ne, fecha }; const nd = { ...diario, entradas: [...diario.entradas.filter((x: Entrada) => x.fecha !== fecha), e] }; saveDiario(nd); onUpdate(nd); } },
         { label: 'Reset email gate', action: () => { const nd = { ...diario, meta: { ...diario.meta, email_registrado: false, email: '', nombre: '' } }; saveDiario(nd); onUpdate(nd); } },
         { label: '⚠️ Borrar todo', action: () => { if (confirm('¿Borrar todos los datos?')) { wipeDiario(); window.location.reload(); } } },
       ].map(btn => (
@@ -108,6 +108,39 @@ function Footer() {
   );
 }
 
+// ── Embedded Welcome (shown in iframe for new users) ──────────────────────────
+function EmbeddedWelcome({ onEmpezar }: { onEmpezar: () => void }) {
+  return (
+    <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', maxWidth: '560px', margin: '0 auto' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(107,95,160,0.1)', border: '1px solid rgba(107,95,160,0.2)', borderRadius: '2rem', padding: '0.4rem 1rem', marginBottom: '1.5rem', fontSize: '0.78rem', color: 'var(--lavanda)', fontWeight: 500 }}>
+        🌙 Tu diario personal · Día 1
+      </div>
+      <h2 className="font-display" style={{ fontSize: 'clamp(1.6rem,4vw,2.2rem)', fontWeight: 300, color: 'var(--azul-noche)', lineHeight: 1.25, marginBottom: '1rem' }}>
+        Empieza tu primer registro.<br /><em>Son menos de 2 minutos.</em>
+      </h2>
+      <p style={{ fontSize: '0.95rem', color: 'var(--muted-tf)', lineHeight: 1.7, marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
+        Indica cómo estás hoy en 6 indicadores clave. Los datos se guardan en tu dispositivo — nadie más los verá.
+      </p>
+      <button
+        onClick={onEmpezar}
+        style={{ background: 'var(--lavanda)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: '1rem 2.5rem', fontSize: '1.05rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 20px rgba(107,95,160,0.35)', transition: 'transform 0.15s ease' }}
+        onMouseEnter={e => (e.target as HTMLButtonElement).style.transform = 'translateY(-2px)'}
+        onMouseLeave={e => (e.target as HTMLButtonElement).style.transform = 'translateY(0)'}
+      >
+        Empezar mi registro de hoy →
+      </button>
+      <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--muted-tf)' }}>
+        Sin registro · Sin tarjeta · 100% privado
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center', marginTop: '1.5rem' }}>
+        {['⚡ Energía', '😴 Sueño', '🔥 Sofocos', '💜 Ánimo', '🌿 Digestión', '🌸 Bienestar íntimo'].map(p => (
+          <span key={p} style={{ background: 'var(--cream)', border: '1px solid var(--borde)', borderRadius: '2rem', padding: '0.3rem 0.75rem', fontSize: '0.78rem', color: 'var(--oscuro)' }}>{p}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [diario, setDiario] = useState<Diario>(emptyDiario());
@@ -116,6 +149,9 @@ export default function App() {
   const [showEmailGate, setShowEmailGate] = useState(false);
   const [showHito, setShowHito] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Detect iframe embed
+  const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   const isDev = typeof window !== 'undefined' && (
     (import.meta as any).env?.DEV ||
@@ -142,7 +178,6 @@ export default function App() {
     const existing = d.entradas.find(e => e.fecha === today);
 
     if (d.entradas.length > 0) {
-      // Returning user
       const diaNum = d.entradas.length + (existing ? 0 : 1);
       const e = existing || newEntradaForToday(diaNum);
       if (!existing) {
@@ -153,7 +188,6 @@ export default function App() {
       setEntrada(e);
       setView('registro');
 
-      // Check hito menopausia
       if (d.meta.dias_sin_periodo >= 365 && !d.meta.hito_mostrado) {
         setShowHito(true);
       }
@@ -179,8 +213,6 @@ export default function App() {
   function handleUpdate(nd: Diario, ne: Entrada) {
     setDiario(nd);
     setEntrada(ne);
-
-    // Check email gate (day 3+, not yet registered)
     if (nd.entradas.length >= 3 && !nd.meta.email_registrado && !showEmailGate) {
       setShowEmailGate(true);
     }
@@ -208,7 +240,7 @@ export default function App() {
   function handleDevUpdate(nd: Diario) {
     setDiario(nd);
     const today = todayISO();
-    const e = nd.entradas.find(x => x.fecha === today) || null;
+    const e = nd.entradas.find((x: Entrada) => x.fecha === today) || null;
     setEntrada(e);
   }
 
@@ -221,6 +253,47 @@ export default function App() {
 
   if (!mounted) return null;
 
+  // ── IFRAME MODE ──────────────────────────────────────────────────────────────
+  if (isInIframe) {
+    return (
+      <>
+        {/* Minimal sticky header in iframe: only navigation between registro/dashboard */}
+        {view !== 'hero' && (
+          <header style={{ position: 'sticky', top: 0, background: 'rgba(250,247,242,0.95)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--borde)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1.25rem', zIndex: 800 }}>
+            <span className="font-display" style={{ fontSize: '1rem', color: 'var(--azul-noche)' }}>Diario Renace 45+</span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {view !== 'registro' && (
+                <button onClick={() => setView('registro')} style={{ background: 'transparent', border: '1.5px solid var(--borde)', borderRadius: 'var(--radius)', padding: '0.35rem 0.75rem', fontSize: '0.78rem', color: 'var(--muted-tf)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  📝 Mi diario
+                </button>
+              )}
+              {view !== 'dashboard' && (
+                <button onClick={() => setView('dashboard')} style={{ background: 'var(--lavanda)', border: 'none', borderRadius: 'var(--radius)', padding: '0.35rem 0.75rem', fontSize: '0.78rem', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                  📊 Análisis
+                </button>
+              )}
+            </div>
+          </header>
+        )}
+
+        <main>
+          {view === 'hero' && <EmbeddedWelcome onEmpezar={handleEmpezar} />}
+          {view === 'registro' && entrada && (
+            <Registro diario={diario} entrada={entrada} onUpdate={handleUpdate} onDashboard={() => setView('dashboard')} />
+          )}
+          {view === 'dashboard' && (
+            <Dashboard diario={diario} onBack={() => setView(entrada ? 'registro' : 'hero')} />
+          )}
+        </main>
+
+        {showEmailGate && <EmailGate onClose={handleEmailGateClose} promedios={emailGatePromedios} />}
+        {showHito && <HitoMenopausia onClose={handleHitoClose} />}
+        {isDev && <DevPanel diario={diario} onUpdate={handleDevUpdate} />}
+      </>
+    );
+  }
+
+  // ── STANDALONE MODE ──────────────────────────────────────────────────────────
   return (
     <>
       <Header
@@ -228,33 +301,18 @@ export default function App() {
         onRegistro={() => { if (entrada) setView('registro'); else handleEmpezar(); }}
         onDashboard={() => setView('dashboard')}
       />
-
       <main>
         {view === 'hero' && <Hero onEmpezar={handleEmpezar} />}
         {view === 'registro' && entrada && (
-          <Registro
-            diario={diario}
-            entrada={entrada}
-            onUpdate={handleUpdate}
-            onDashboard={() => setView('dashboard')}
-          />
+          <Registro diario={diario} entrada={entrada} onUpdate={handleUpdate} onDashboard={() => setView('dashboard')} />
         )}
         {view === 'dashboard' && (
-          <Dashboard
-            diario={diario}
-            onBack={() => setView(entrada ? 'registro' : 'hero')}
-          />
+          <Dashboard diario={diario} onBack={() => setView(entrada ? 'registro' : 'hero')} />
         )}
       </main>
-
       <Footer />
-
-      {showEmailGate && (
-        <EmailGate onClose={handleEmailGateClose} promedios={emailGatePromedios} />
-      )}
-
+      {showEmailGate && <EmailGate onClose={handleEmailGateClose} promedios={emailGatePromedios} />}
       {showHito && <HitoMenopausia onClose={handleHitoClose} />}
-
       {isDev && <DevPanel diario={diario} onUpdate={handleDevUpdate} />}
     </>
   );
